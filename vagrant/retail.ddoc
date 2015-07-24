@@ -1,0 +1,7 @@
+{
+	"views": {
+        	"allOrders": {
+	        	"map": "function (doc, meta) {\nif(doc.type == \"order\")\nemit(meta.id, null);\n}"
+		}
+	}
+}

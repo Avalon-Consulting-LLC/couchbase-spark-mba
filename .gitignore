@@ -1,0 +1,7 @@
+.idea
+*.iml
+target
+deps
+.vagrant
+dependency-reduced-pom.xml
+*.jar

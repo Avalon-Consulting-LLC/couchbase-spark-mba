@@ -1,0 +1,81 @@
+---
+- name: Quick Couchbase setup with retail bucket and install Spark
+  hosts: all
+  sudo: yes
+  tasks:
+  - name: Install python dependencies
+    yum: name={{item}} state=latest update_cache=yes
+    with_items:
+    - epel-release
+    - python-httplib2
+    - python-pip
+    - python-devel
+    - gcc
+    - libselinux-python
+
+  - name: Install Java
+    yum: name=java-1.7.0-openjdk.x86_64 state=latest
+    
+  - name: Check if deps exists
+    stat: path=/vagrant/deps
+    register: deps_exists
+
+  - name: Create deps Directory
+    file: path=/vagrant/deps state=directory
+    when: deps_exists.stat.exists == False
+
+  - name: Check if Couchbase RPM exists
+    stat: path=/vagrant/deps/couchbase-server-enterprise-4.0.0-beta-centos6.x86_64.rpm
+    register: couchbase_rpm
+
+  - name: Download Couchbase RPM
+    get_url: url=http://packages.couchbase.com/releases/4.0.0-beta/couchbase-server-enterprise-4.0.0-beta-centos6.x86_64.rpm dest=/vagrant/deps/
+    when: couchbase_rpm.stat.exists == False
+
+  - name: Install Couchbase RPM
+    yum: name=/vagrant/deps/couchbase-server-enterprise-4.0.0-beta-centos6.x86_64.rpm state=present
+  
+  - name: Wait for Couchbase initilization
+    wait_for: port=8091 delay=2
+
+  - name: Configure Base Couchbase Server
+    shell: /opt/couchbase/bin/couchbase-cli cluster-init -c 127.0.0.1:8091 --cluster-init-username=couchbase --cluster-init-password=couchbase --cluster-init-port=8091 --cluster-init-ramsize=796 --services=data,index,query
+    register: couchbase_config
+    ignore_errors: True
+
+  - name: Configure retail Bucket
+    shell: /opt/couchbase/bin/couchbase-cli bucket-create -c 127.0.0.1:8091 -u couchbase -p couchbase --bucket=retail --bucket-type=couchbase --bucket-ramsize=796 --bucket-replica=1
+    when: couchbase_config is defined
+
+  - name: Create retail View Design Document
+    uri: url=http://localhost:8092/retail/_design/retail
+         user=couchbase
+         password=couchbase
+         method=PUT
+         body='{{ lookup("file","retail.ddoc") }}'
+         HEADER_Content-Type="application/json"
+         status_code=201
+
+  - name: Check if Spark TAR exists
+    stat: path=/vagrant/deps/spark-1.4.1-bin-hadoop2.6.tgz
+    register: spark_tar
+           
+  - name: Download Spark TAR
+    get_url: url=http://d3kbcqa49mib13.cloudfront.net/spark-1.4.1-bin-hadoop2.6.tgz  dest=/vagrant/deps/
+    when: spark_tar.stat.exists == False
+                   
+  - name: Unpack Spark
+    unarchive: src=/vagrant/deps/spark-1.4.1-bin-hadoop2.6.tgz dest=/opt/ copy=no
+
+  - name: Copy Couchbase C Library repo file
+    copy: src=couchbase.repo dest=/etc/yum.repos.d/couchbase.repo
+    
+  - name: Install libcouchbase
+    yum: name={{item}} state=latest
+    with_items:
+    - libcouchbase2-libevent
+    - libcouchbase-devel
+    - libcouchbase2-bin
+
+  - name: Install Couchbase Python SDK
+    pip: name=couchbase state=latest
