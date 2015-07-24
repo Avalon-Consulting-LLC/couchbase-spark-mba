@@ -16,7 +16,7 @@ Prerequisites
 	vagrant plugin install vagrant-cachier
 	```
 
-	4. Install Ansible
+4. Install Ansible
 
 	```sh
 	brew install ansible
