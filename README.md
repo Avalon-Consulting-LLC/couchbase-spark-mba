@@ -11,45 +11,45 @@ Prerequisites
 
 3. Install necessary Vagrant plugins:
 
-	```sh
-	vagrant plugin install vagrant-hostmanager
-	vagrant plugin install vagrant-cachier
-	```
+```sh
+vagrant plugin install vagrant-hostmanager
+vagrant plugin install vagrant-cachier
+```
 
 4. Install Ansible
 
-	```sh
-	brew install ansible
-	```
+```sh
+brew install ansible
+```
 
 Getting Started
 ------
 Start by bringing up the Vagrant machine, it is configured to install everything you need to run the analysis
 
-	```sh
-	cd vagrant
-	vagrant up
-	```
+```sh
+cd vagrant
+vagrant up
+```
 
 Load the sample data by SSHing into the machine and running the tocb.py script.
 
-	```sh
-	vagrant ssh
-	cd /vagrant
-	python tocb.py
-	```
+```sh
+vagrant ssh
+cd /vagrant
+python tocb.py
+```
 
 At the top level of the project, go into the Spark project, build it, then move the jar file into the Vagrant shared folder:
 
-	```sh
-	cd mba
-	mvn clean package
-	cp target/mba-1.0-SNAPSHOT.jar ../vagrant/
-	```
+```sh
+cd mba
+mvn clean package
+cp target/mba-1.0-SNAPSHOT.jar ../vagrant/
+```
 
 Once the jar is in place you can SSH into the vagrant machine and run the process:
 
-	```sh
-	vagrant ssh
-	/opt/spark-1.4.1-bin-hadoop2.6/bin/spark-submit --class com.avalonconsult.mba.MBA /vagrant/mba-1.0-SNAPSHOT.jar
-	```
+```sh
+vagrant ssh
+/opt/spark-1.4.1-bin-hadoop2.6/bin/spark-submit --class com.avalonconsult.mba.MBA /vagrant/mba-1.0-SNAPSHOT.jar
+```
