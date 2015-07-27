@@ -59,7 +59,7 @@ object MBA {
     val recommendations = product_pairs
       .flatMap(tuple => List((tuple._1._1, (tuple._1._2, tuple._2)), (tuple._1._2, (tuple._1._1, tuple._2))))
       .groupByKey()
-      .map(product => (product._1, product._2.toList.sortBy(l => -l._2).take(3)))
+      .map(product => (product._1, product._2.toList.sortBy(pair_count => -pair_count._2).take(3)))
       .join(purchase_counts)
 
     // Take our final data set and convert the tuples into JsonObjects to be stored in Couchbase.
