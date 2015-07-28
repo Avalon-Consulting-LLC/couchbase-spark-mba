@@ -15,7 +15,7 @@ object MBA {
   def main(args : Array[String]): Unit = {
     // Create a Spark Configuration with all the settings we will need to connect to Couchbase including a list of
     // Couchbase cluster nodes and a bucket.
-    // NOTE: we are setting the mast to local[*] which means we will run this Spark job locally instead of on a cluster.
+    // NOTE: we are setting the master to local[*] which means we will run this Spark job locally instead of on a cluster.
     val sparkConf = new SparkConf()
       .setMaster("local[*]")
       .setAppName("MBA")
@@ -29,7 +29,7 @@ object MBA {
       .map(row => row.id)
       .couchbaseGet[JsonDocument]()
 
-    // For each order, use a flatMap explode out all of the items, then count the number of appearances of each item.
+    // For each order, use a flatMap to explode out all of the items, then count the number of appearances of each item.
     val purchase_counts = order_docs
       .flatMap(doc => for {
         item <- doc.content().getArray("items").asScala
@@ -39,7 +39,7 @@ object MBA {
     // For each document, create tuples from matching up each item of the order with each other item in the order. Then
     // we want to take all of the product pairs and reduce them to get a sum for each unique pairing, we do this
     // with the reduceByKey method.
-    // NOTE: the if statement in the for comprehension is only allowing pairs where item1 is less then item2, this will
+    // NOTE: the if statement in the for-comprehension is only allowing pairs where item1 is less then item2, this will
     // filter out all duplicates and prevent matching items with themselves.
     val product_pairs = order_docs
       .flatMap(doc => for {
@@ -53,8 +53,7 @@ object MBA {
     // direction of the product pair. For example if we gathered the sum for a product pair like this: ((35, 36), 5) where
     // (35, 36) is the product pair and 5 is the sum, then we would want to create two tuples: (35, (36, 5)) and (36, (35, 5)).
     // After creating a list of bidirectional product pairs, use the groupByKey so that for each product ID we have a
-    // list of other product IDs and affinities that they were purchased together. Then sort that list and grab the
-    // best 3 results for each product ID, while at the same time gathering the total number of purchases of this product.
+    // list of other product IDs and counts. Then sort that list and grab the best 3 results for each product ID.
     // Lastly, join with our purchase_counts.
     val recommendations = product_pairs
       .flatMap(tuple => List((tuple._1._1, (tuple._1._2, tuple._2)), (tuple._1._2, (tuple._1._1, tuple._2))))
@@ -62,7 +61,8 @@ object MBA {
       .map(product => (product._1, product._2.toList.sortBy(pair_count => -pair_count._2).take(3)))
       .join(purchase_counts)
 
-    // Take our final data set and convert the tuples into JsonObjects to be stored in Couchbase.
+    // Take our final data set and convert the tuples into JsonObjects to be stored in Couchbase. Calculate the affinity
+    // values for each recommendation by dividing the number of pair occurrences by the total number of item purchases.
     val documents = recommendations
       .map(recommendation => {
         val total_purchases = recommendation._2._2.toDouble
@@ -72,6 +72,7 @@ object MBA {
         ("product_recommendation::" + recommendation._1, JsonObject.empty().put("type", "product_recommendation").put("recommendations", JsonArray.from(json_items)))
       })
 
+    // Store into the Couchbase retail bucket.
     documents.toCouchbaseDocument[JsonDocument].saveToCouchbase("retail")
   }
 

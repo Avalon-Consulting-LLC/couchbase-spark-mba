@@ -11,24 +11,3 @@ for line in f:
     count += 1
 
 bucket.insert_multi(inserts)
-
-'''
-select
-    least(itemid, secitemid) as item1,
-    greatest(itemid, secitemid) as item2,
-    count(*) as cnt
-from
-    retail
-        unnest items as itemid
-        unnest retail.items as secitemid
-where
-    itemid != secitemid
-group by
-    least(itemid, secitemid),
-    greatest(itemid, secitemid)
-order by
-    cnt desc
-limit
-    10
-;
-'''
